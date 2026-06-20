@@ -16,7 +16,6 @@ Un client de bureau non-officiel pour **Nintendo Music**, développé avec Elect
 ## 📦 Prérequis
 
 * [Node.js](https://nodejs.org/) (Version 18 ou supérieure recommandée)
-* [Git](https://git-scm.com/) (pour le versionnage et le push sur GitHub)
 
 ## 🛠️ Installation et Lancement local
 
