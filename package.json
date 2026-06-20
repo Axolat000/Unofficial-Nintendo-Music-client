@@ -1,0 +1,49 @@
+{
+  "name": "nintendo-music-pc",
+  "version": "1.0.0",
+  "desktopName": "NintendoMusic",
+  "description": "Client PC non-officiel pour Nintendo Music",
+  "author": "Axolat",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:mac": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.tonpseudo.nintendomusic",
+    "productName": "Nintendo Music",
+    "directories": {
+      "output": "dist"
+    },
+    "electronDownload": {
+      "mirror": "https://github.com/castlabs/electron-releases/releases/download/"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Audio",
+      "icon": "icon.png",
+      "executableName": "nintendo-music",
+      "syncDesktopName": true
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.music",
+      "icon": "icon.icns"
+}
+  },
+  "devDependencies": {
+    "electron": "github:castlabs/electron-releases#v42.0.0+wvcus",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "discord-rich-presence": "^0.0.8",
+    "discord-rpc": "^4.0.1",
+    "ws": "^8.21.0"
+  }
+}
