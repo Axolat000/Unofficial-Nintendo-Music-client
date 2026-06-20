@@ -76,14 +76,13 @@ let lastActivityCache = { title: null, isPlaying: null, end: 0 };
           let currentTime = 0;
           let duration = 0;
 
-          // On vérifie directement les lecteurs audio/vidéo pour chopper le temps
           const medias = document.querySelectorAll('audio, video');
           for (const media of medias) {
             if (!media.paused && !media.muted) {
               isPlaying = true;
               currentTime = media.currentTime;
               duration = media.duration;
-              break; // On a trouvé la musique en cours
+              break;
             }
           }
 
@@ -109,50 +108,38 @@ let lastActivityCache = { title: null, isPlaying: null, end: 0 };
       const { title, artist, artworkUrl, isPlaying, currentTime, duration } = data;
       const assets = {};
       
-      // --- CALCUL DES TIMESTAMPS POUR DISCORD ---
-      const now = Date.now();
+      // --- CALCUL DES TIMESTAMPS (En secondes pour Discord) ---
+      const nowSeconds = Math.round(Date.now() / 1000);
       let startTimestamp = null;
       let endTimestamp = null;
 
       if (isPlaying && duration > 0) {
-        // On calcule le vrai timestamp (en millisecondes) de début et de fin
-        startTimestamp = Math.round(now - (currentTime * 1000));
-        endTimestamp = Math.round(startTimestamp + (duration * 1000));
+        startTimestamp = Math.round(nowSeconds - currentTime);
+        endTimestamp = Math.round(startTimestamp + duration);
       }
 
       // --- SYSTÈME ANTI-SPAM ---
       const isSameTrack = lastActivityCache.title === title && lastActivityCache.isPlaying === isPlaying;
-      // On tolère 3 secondes de décalage au cas où le script boucle bizarrement, 
-      // au-delà, on considère que l'utilisateur a cliqué sur la timeline (avance rapide)
-      const isSameTime = Math.abs(lastActivityCache.end - (endTimestamp || 0)) < 3000;
+      const isSameTime = Math.abs(lastActivityCache.end - (endTimestamp || 0)) < 3;
 
-      if (isSameTrack && isSameTime) {
-        // Rien de nouveau : on annule l'envoi pour garder la console et le pipe propres !
-        return; 
-      }
+      if (isSameTrack && isSameTime) return; 
 
-      // On met à jour notre mémoire avec la nouvelle situation
       lastActivityCache = { title, isPlaying, end: (endTimestamp || 0) };
 
-      // --- PRÉPARATION DES ASSETS ---
-      if (isPlaying && title) {
-        assets.large_image = artworkUrl || 'nintendo_music_logo'; 
-        assets.large_text = artist;
-      } else {
-        assets.large_image = 'nintendo_music_logo';
-        assets.large_text = 'Nintendo Music';
-      }
+      // --- ASSETS ---
+      assets.large_image = artworkUrl || 'nintendo_music_logo'; 
+      assets.large_text = artist;
 
       // --- CRÉATION DE L'OBJET D'ACTIVITÉ ---
       const activityObj = {
+        type: 2, // 2 = LISTENING (Active la barre de progression)
         details: (isPlaying && title) ? title : 'Dans les menus',
-        state: (isPlaying && title) ? artist : 'En pause / Navigation',
+        state: (isPlaying && title) ? artist : 'En attente',
         assets: assets,
         instance: false,
       };
 
-      // On ajoute la barre de temps uniquement si une musique est en cours
-      if (startTimestamp && endTimestamp) {
+      if (isPlaying && startTimestamp && endTimestamp) {
         activityObj.timestamps = {
           start: startTimestamp,
           end: endTimestamp
@@ -168,9 +155,9 @@ let lastActivityCache = { title: null, isPlaying: null, end: 0 };
         nonce: String(nonce++)
       });
       
-      console.log('[Discord] NOUVEAU SET_ACTIVITY envoyé:', isPlaying && title ? `${title} (En lecture)` : 'Dans les menus (Pause)');
+      console.log('[Discord] Activity sent:', isPlaying ? title : 'Idle');
     }).catch(err => {
-      console.error('[Discord] Erreur :', err);
+      console.error('[Discord] Error:', err);
     });
   }
 
@@ -182,8 +169,16 @@ let lastActivityCache = { title: null, isPlaying: null, end: 0 };
       return;
     }
 
-    const pipePath = `\\\\?\\pipe\\discord-ipc-${attempt}`;
-    console.log(`[Discord] Essai pipe ${attempt}...`);
+    // Définition du chemin du socket selon le système d'exploitation
+    let pipePath;
+    if (process.platform === 'win32') {
+      pipePath = `\\\\?\\pipe\\discord-ipc-${attempt}`;
+    } else {
+      const basePath = process.env.XDG_RUNTIME_DIR || process.env.TMPDIR || process.env.TMP || process.env.TEMP || '/tmp';
+      pipePath = `${basePath}/discord-ipc-${attempt}`;
+    }
+
+    console.log(`[Discord] Essai pipe ${attempt} sur : ${pipePath}`);
     const socket = net.createConnection(pipePath);
     
     const connectTimeout = setTimeout(() => {
